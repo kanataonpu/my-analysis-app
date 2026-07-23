@@ -61,7 +61,8 @@ if submit_button:
         try:
             genai.configure(api_key=api_key)
             # 最新・高速なモデルを設定
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # 修正後
+model = genai.GenerativeModel("gemini-2.0-flash")
 
             prompt = f"""
 あなたは西洋占星術・数秘術・キャリアコンサルティング・ビジネスプロデュースに精通した超一流のスペシャリストです。
