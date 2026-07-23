@@ -1,5 +1,5 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 from datetime import datetime
 
 # 画面のタイトルと設定
@@ -59,8 +59,11 @@ if submit_button:
         st.warning("経歴や長所・短所などの必須項目を入力してください。")
     else:
         try:
-            # 最新のGoogle GenAI クライアントを初期化
-            client = genai.Client(api_key=api_key)
+            # APIキーを設定
+            genai.configure(api_key=api_key)
+            
+            # 安定版モデルを正しく生成
+            model = genai.GenerativeModel("gemini-2.0-flash")
 
             prompt = f"""
 あなたは西洋占星術・数秘術・キャリアコンサルティング・ビジネスプロデュースに精通した一流のスペシャリストです。
@@ -123,10 +126,7 @@ if submit_button:
 """
 
             with st.spinner("🔮 あなたの星と経歴を深く読み解き、超詳細な分析レポートを生成中...（1〜2分ほどかかります）"):
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt
-                )
+                response = model.generate_content(prompt)
                 st.success("✨ 分析が完了しました！")
                 st.markdown(response.text)
 
