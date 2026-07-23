@@ -58,7 +58,7 @@ if submit_button:
         st.warning("経歴や長所・短所などの必須項目を入力してください。")
     else:
         try:
-            # 最新SDKの公式クライアント作成
+            # 最新SDKクライアントの初期化
             client = genai.Client(api_key=api_key)
 
             prompt = f"""
