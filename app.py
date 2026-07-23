@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 from datetime import datetime
 
 # 画面のタイトルと設定
@@ -11,11 +11,10 @@ st.set_page_config(
 st.title("🔮 完全版：自己分析＆年代別マネタイズ・キャリア設計診断")
 st.write("生年月日・出生情報とこれまでの経歴エピソードから、あなたの本質・隠れた才能・年代ごとのライフフェーズ・現実的な収益化ロードマップを解き明かします。")
 
-# サイドバー：APIキーの入力（Secrets未設定時のバックアップ用）
+# サイドバー：APIキーの入力
 st.sidebar.header("設定")
 api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Streamlit Secretsに設定していない場合、ここに入力してください。")
 
-# Secretに設定されている場合は優先利用
 if not api_key and "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 
@@ -59,11 +58,8 @@ if submit_button:
         st.warning("経歴や長所・短所などの必須項目を入力してください。")
     else:
         try:
-            # APIキーを設定
-            genai.configure(api_key=api_key)
-            
-            # 無料アカウントで確実に動作する gemini-1.5-flash に指定
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            # 最新SDKの公式クライアント作成
+            client = genai.Client(api_key=api_key)
 
             prompt = f"""
 あなたは西洋占星術・数秘術・キャリアコンサルティング・ビジネスプロデュースに精通した一流のスペシャリストです。
@@ -126,7 +122,10 @@ if submit_button:
 """
 
             with st.spinner("🔮 あなたの星と経歴を深く読み解き、超詳細な分析レポートを生成中...（1〜2分ほどかかります）"):
-                response = model.generate_content(prompt)
+                response = client.models.generate_content(
+                    model='gemini-2.0-flash',
+                    contents=prompt
+                )
                 st.success("✨ 分析が完了しました！")
                 st.markdown(response.text)
 
