@@ -1,5 +1,5 @@
 import datetime
-import google.generativeai as genai
+from google import genai
 import streamlit as st
 from flatlib import const
 from flatlib.chart import Chart
@@ -219,8 +219,6 @@ if submitted:
   if not api_key:
     st.error('Gemini APIキーを入力してください。')
   else:
-    genai.configure(api_key=api_key)
-
     with st.spinner(
         '正確な天体配置・ハウス・ドラゴンヘッド・リリスを計算し、レポートを生成中...'
     ):
@@ -293,8 +291,11 @@ if submitted:
 """
 
       try:
-        model = genai.GenerativeModel('gemini-3.6-flash')
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
 
         st.success('分析が完了しました！')
         st.markdown(response.text)
