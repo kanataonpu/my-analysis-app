@@ -62,8 +62,8 @@ if submit_button:
             # APIキーを設定
             genai.configure(api_key=api_key)
             
-            # 安定版モデルを正しく生成
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            # 無料アカウントで確実に動作する gemini-1.5-flash に指定
+            model = genai.GenerativeModel("gemini-1.5-flash")
 
             prompt = f"""
 あなたは西洋占星術・数秘術・キャリアコンサルティング・ビジネスプロデュースに精通した一流のスペシャリストです。
