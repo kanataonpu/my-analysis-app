@@ -123,7 +123,7 @@ if submit_button:
 
             with st.spinner("🔮 あなたの星と経歴を深く読み解き、超詳細な分析レポートを生成中...（1〜2分ほどかかります）"):
                 response = client.models.generate_content(
-                    model='gemini-2.0-flash',
+                    model='gemini-2.5-flash',
                     contents=prompt
                 )
                 st.success("✨ 分析が完了しました！")
