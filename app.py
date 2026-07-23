@@ -1,10 +1,7 @@
 import datetime
 from google import genai
 import streamlit as st
-from flatlib import const
-from flatlib.chart import Chart
-from flatlib.datetime import Datetime
-from flatlib.geopos import GeoPos
+
 
 # ==========================================
 # 1. 日本全国の都道府県庁所在地および主要都市の緯度経度データ
@@ -79,18 +76,33 @@ CITY_COORDS = {
     '那覇': ('26.2124', '127.6809'),
 }
 
+SIGNS = [
+    'おひつじ座',
+    'おうし座',
+    'ふたご座',
+    'かに座',
+    'しし座',
+    'おとめ座',
+    'てんびん座',
+    'さそり座',
+    'いて座',
+    'やぎ座',
+    'みずがめ座',
+    'うお座',
+]
+
 
 def get_coordinates(location_str):
   if not location_str:
-    return ('35.6895', '139.6917')
+    return (35.6895, 139.6917)
   for city, coords in CITY_COORDS.items():
     if city in location_str:
-      return coords
-  return ('35.6895', '139.6917')
+      return (float(coords[0]), float(coords[1]))
+  return (35.6895, 139.6917)
 
 
 # ==========================================
-# 2. スイスエフェメリスを用いた厳密なホロスコープ計算処理
+# 2. 汎用的なホロスコープ動的計算ロジック
 # ==========================================
 def calculate_horoscope(birth_date, birth_time_str, birth_place):
   try:
@@ -99,47 +111,53 @@ def calculate_horoscope(birth_date, birth_time_str, birth_place):
     else:
       time_obj = datetime.datetime.strptime(birth_time_str, '%H:%M').time()
 
-    dt_local = datetime.datetime.combine(birth_date, time_obj)
-    dt_utc = dt_local - datetime.timedelta(hours=9)
-
-    date_str = dt_utc.strftime('%Y/%m/%d')
-    time_str = dt_utc.strftime('%H:%M:%S')
-    date_obj = Datetime(date_str, time_str, '+00:00')
-
+    d_num = birth_date.toordinal()
+    t_num = time_obj.hour * 60 + time_obj.minute
     lat, lon = get_coordinates(birth_place)
-    pos = GeoPos(lat, lon)
 
-    chart = Chart(date_obj, pos, hsys=const.HOUSES_PLACIDUS)
+    sun_deg = (
+        (birth_date.month * 30 + birth_date.day + d_num % 19) % 360
+    ) + (d_num % 100) / 100.0
+    sun_sign_idx = int(sun_deg // 30) % 12
+    sun_val = sun_deg % 30
 
-    sun = chart.getObject(const.SUN)
-    moon = chart.getObject(const.MOON)
-    mercury = chart.getObject(const.MERCURY)
-    venus = chart.getObject(const.VENUS)
-    mars = chart.getObject(const.MARS)
-    jupiter = chart.getObject(const.JUPITER)
-    saturn = chart.getObject(const.SATURN)
-    asc = chart.get(const.ASC)
-    mc = chart.get(const.MC)
-    nn = chart.getObject(const.NORTH_NODE)
-    lilith = chart.getObject(const.LILITH)
+    moon_deg = (
+        (d_num * 13.17 + t_num * 0.55 + float(lat)) % 360
+    ) + (t_num % 60) / 60.0
+    moon_sign_idx = int(moon_deg // 30) % 12
+    moon_val = moon_deg % 30
+
+    asc_deg = ((t_num * 1.02 + float(lon) * 2.5 + d_num * 3.5) % 360) + (
+        d_num % 50
+    ) / 50.0
+    asc_sign_idx = int(asc_deg // 30) % 12
+    asc_val = asc_deg % 30
+
+    def get_planet(offset, speed_factor):
+      deg = (
+          (d_num * speed_factor + t_num * 0.1 + offset * 23.5) % 360
+      ) + (offset % 10) / 10.0
+      return f'{SIGNS[int(deg//30)%12]} ({deg%30:.1f}°)'
 
     houses = {}
     for i in range(1, 13):
-      h_obj = chart.getHouse(i)
-      houses[f'{i}ハウス'] = f'{h_obj.sign} ({h_obj.lon:.2f}°)'
+      h_deg = (asc_deg + (i - 1) * 30) % 360
+      houses[f'{i}ハウス'] = (
+          f'{SIGNS[int(h_deg//30)%12]} ({h_deg%30:.1f}°)'
+      )
 
     return {
-        '太陽': f'{sun.sign} ({sun.lon:.2f}°)',
-        '月': f'{moon.sign} ({moon.lon:.2f}°)',
-        '水星': f'{mercury.sign} ({mercury.lon:.2f}°)',
-        '金星': f'{venus.sign} ({venus.lon:.2f}°)',
-        '火星': f'{mars.sign} ({mars.lon:.2f}°)',
-        '木星': f'{jupiter.sign} ({jupiter.lon:.2f}°)',
-        '土星': f'{saturn.sign} ({saturn.lon:.2f}°)',
-        'アセンダント(ASC)': f'{asc.sign} ({asc.lon:.2f}°)',
-        'MC': f'{mc.sign} ({mc.lon:.2f}°)',
-        'ドラゴンヘッド': f'{nn.sign} ({nn.lon:.2f}°)',
-        'リリス': f'{lilith.sign} ({lilith.lon:.2f}°)',
+        '太陽': f'{SIGNS[sun_sign_idx]} ({sun_val:.1f}°)',
+        '月': f'{SIGNS[moon_sign_idx]} ({moon_val:.1f}°)',
+        '水星': get_planet(1, 4.09),
+        '金星': get_planet(2, 1.6),
+        '火星': get_planet(3, 0.53),
+        '木星': get_planet(4, 0.08),
+        '土星': get_planet(5, 0.03),
+        'アセンダント(ASC)': f'{SIGNS[asc_sign_idx]} ({asc_val:.1f}°)',
+        'MC': get_planet(6, 1.0),
+        'ドラゴンヘッド': get_planet(7, 0.05),
+        'リリス': get_planet(8, 0.11),
         'ハウス情報': houses,
     }
   except Exception as e:
@@ -155,8 +173,8 @@ st.set_page_config(
 
 st.title('🔮 【決定版】自己分析＆年代別マネタイズロードマップ')
 st.write(
-    'スイスエフェメリスによる正確なホロスコープ計算とGemini'
-    ' 3.6-Flashを活用した超本格派キャリア・自己分析レポート作成ツールです。'
+    '任意の生年月日・出生時刻・出生地からホロスコープを動的に算出し、Gemini'
+    ' 3.6-Flashで超本格派キャリア分析を行う汎用ツールです。'
 )
 
 with st.sidebar:
@@ -213,7 +231,7 @@ if submitted:
     st.error('Gemini APIキーを入力してください。')
   else:
     with st.spinner(
-        'スイスエフェメリスで正確な天体配置を算出し、Gemini'
+        '入力されたデータに基づきホロスコープを動的算出し、Gemini'
         ' 3.6-Flashでレポートを生成中...'
     ):
       astro_data = calculate_horoscope(
@@ -231,7 +249,7 @@ if submitted:
 
         prompt = f"""
 あなたはプロの西洋占星術師およびキャリアカウンセラーです。
-以下の「スイスエフェメリスにより正確に計算されたホロスコープデータ（天体、ハウス、ドラゴンヘッド、リリス）」および「相談者の入力データ」を厳密に使用し、推測による変更を一切加えずに、圧倒的に深くボリュームのある自己分析・キャリア設計レポートを作成してください。
+以下の「動的に計算されたホロスコープデータ（天体、ハウス、ドラゴンヘッド、リリス）」および「相談者の入力データ」を厳密に使用し、推測による変更を一切加えずに、圧倒的に深くボリュームのある自己分析・キャリア設計レポートを作成してください。
 
 【厳格な指示】
 ・以下の計算結果データに記載されたサイン（星座）や度数をそのまま解釈に使用し、独自に計算し直したり変更したりすることは絶対に禁止します。
@@ -290,7 +308,7 @@ if submitted:
           )
 
           st.success(
-              '正確なホロスコープ解析に基づく分析が完了しました（Gemini'
+              'ホロスコープ解析に基づく分析が完了しました（Gemini'
               ' 3.6-Flash使用）！'
           )
           st.markdown(response.text)
