@@ -99,7 +99,6 @@ def calculate_horoscope(birth_date, birth_time_str, birth_place):
     else:
       time_obj = datetime.datetime.strptime(birth_time_str, '%H:%M').time()
 
-    # 日本時間(JST = UTC+9) から UTCへ変換
     dt_local = datetime.datetime.combine(birth_date, time_obj)
     dt_utc = dt_local - datetime.timedelta(hours=9)
 
@@ -110,7 +109,6 @@ def calculate_horoscope(birth_date, birth_time_str, birth_place):
     lat, lon = get_coordinates(birth_place)
     pos = GeoPos(lat, lon)
 
-    # プラシダスハウス方式でチャートを生成
     chart = Chart(date_obj, pos, hsys=const.HOUSES_PLACIDUS)
 
     sun = chart.getObject(const.SUN)
@@ -157,7 +155,8 @@ st.set_page_config(
 
 st.title('🔮 【決定版】自己分析＆年代別マネタイズロードマップ')
 st.write(
-    '生年月日・出生情報とこれまでの経歴エピソードから、あなたの本質・変遷・年代別ライフフェーズ・現実的なロードマップを解き明かします。'
+    'スイスエフェメリスによる正確なホロスコープ計算とGemini'
+    ' 3.6-Flashを活用した超本格派キャリア・自己分析レポート作成ツールです。'
 )
 
 with st.sidebar:
@@ -214,7 +213,8 @@ if submitted:
     st.error('Gemini APIキーを入力してください。')
   else:
     with st.spinner(
-        '正確な天体配置・ハウス・ドラゴンヘッド・リリスを計算し、レポートを生成中...'
+        'スイスエフェメリスで正確な天体配置を算出し、Gemini'
+        ' 3.6-Flashでレポートを生成中...'
     ):
       astro_data = calculate_horoscope(
           birth_date, birth_time_input, birth_place_input
@@ -231,7 +231,7 @@ if submitted:
 
         prompt = f"""
 あなたはプロの西洋占星術師およびキャリアカウンセラーです。
-以下の「事前にプログラムで正確に計算されたホロスコープデータ（天体、ハウス、ドラゴンヘッド、リリス）」および「相談者の入力データ」を厳密に使用し、推測による変更を一切加えずに、圧倒的に深くボリュームのある自己分析・キャリア設計レポートを作成してください。
+以下の「スイスエフェメリスにより正確に計算されたホロスコープデータ（天体、ハウス、ドラゴンヘッド、リリス）」および「相談者の入力データ」を厳密に使用し、推測による変更を一切加えずに、圧倒的に深くボリュームのある自己分析・キャリア設計レポートを作成してください。
 
 【厳格な指示】
 ・以下の計算結果データに記載されたサイン（星座）や度数をそのまま解釈に使用し、独自に計算し直したり変更したりすることは絶対に禁止します。
@@ -285,11 +285,14 @@ if submitted:
         try:
           client = genai.Client(api_key=api_key)
           response = client.models.generate_content(
-              model='gemini-2.5-flash',
+              model='gemini-3.6-flash',
               contents=prompt,
           )
 
-          st.success('正確なホロスコープ解析に基づく分析が完了しました！')
+          st.success(
+              '正確なホロスコープ解析に基づく分析が完了しました（Gemini'
+              ' 3.6-Flash使用）！'
+          )
           st.markdown(response.text)
 
         except Exception as e:
