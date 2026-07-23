@@ -10,7 +10,6 @@ from flatlib.geopos import GeoPos
 # 1. 日本全国の都道府県庁所在地および主要都市の緯度経度データ
 # ==========================================
 CITY_COORDS = {
-    # 北海道・東北
     '北海道': ('43.0642', '141.3469'),
     '札幌': ('43.0642', '141.3469'),
     '青森': ('40.8244', '140.7400'),
@@ -21,7 +20,6 @@ CITY_COORDS = {
     '秋田': ('39.7186', '140.1024'),
     '山形': ('38.2404', '140.3636'),
     '福島': ('37.7500', '140.4678'),
-    # 関東
     '茨城': ('36.3418', '140.4468'),
     '水戸': ('36.3418', '140.4468'),
     '栃木': ('36.5658', '139.8836'),
@@ -34,7 +32,6 @@ CITY_COORDS = {
     '東京都': ('35.6895', '139.6917'),
     '神奈川': ('35.4478', '139.6425'),
     '横浜': ('35.4478', '139.6425'),
-    # 甲信越・北陸
     '新潟': ('37.9022', '139.0236'),
     '富山': ('36.6953', '137.2113'),
     '石川': ('36.5944', '136.6256'),
@@ -43,14 +40,12 @@ CITY_COORDS = {
     '山梨': ('35.6642', '138.5684'),
     '甲府': ('35.6642', '138.5684'),
     '長野': ('36.6513', '138.1812'),
-    # 東海
     '岐阜': ('35.3912', '136.7223'),
     '静岡': ('34.9769', '138.3831'),
     '愛知': ('35.1815', '136.9066'),
     '名古屋': ('35.1815', '136.9066'),
     '三重': ('34.7303', '136.5086'),
     '津': ('34.7303', '136.5086'),
-    # 関西
     '滋賀': ('35.0045', '135.8686'),
     '大津': ('35.0045', '135.8686'),
     '京都': ('35.0116', '135.7681'),
@@ -61,21 +56,18 @@ CITY_COORDS = {
     '神戸': ('34.6913', '135.1830'),
     '奈良': ('34.6851', '135.8328'),
     '和歌山': ('34.2260', '135.1675'),
-    # 中国
     '鳥取': ('35.5036', '134.2383'),
     '島根': ('35.4723', '133.0505'),
     '松江': ('35.4723', '133.0505'),
     '岡山': ('34.6617', '133.9350'),
     '広島': ('34.3965', '132.4596'),
     '山口': ('34.1861', '131.4705'),
-    # 四国
     '徳島': ('34.0658', '134.5593'),
     '香川': ('34.3401', '134.0434'),
     '高松': ('34.3401', '134.0434'),
     '愛媛': ('33.8416', '132.7657'),
     '松山': ('33.8416', '132.7657'),
     '高知': ('33.5597', '133.5311'),
-    # 九州・沖縄
     '福岡': ('33.5904', '130.4017'),
     '佐賀': ('33.2494', '130.2988'),
     '長崎': ('32.7448', '129.8737'),
@@ -98,7 +90,7 @@ def get_coordinates(location_str):
 
 
 # ==========================================
-# 2. 正確なホロスコープ計算処理（ハウス・感受点追加）
+# 2. スイスエフェメリスを用いた厳密なホロスコープ計算処理
 # ==========================================
 def calculate_horoscope(birth_date, birth_time_str, birth_place):
   try:
@@ -107,6 +99,7 @@ def calculate_horoscope(birth_date, birth_time_str, birth_place):
     else:
       time_obj = datetime.datetime.strptime(birth_time_str, '%H:%M').time()
 
+    # 日本時間(JST = UTC+9) から UTCへ変換
     dt_local = datetime.datetime.combine(birth_date, time_obj)
     dt_utc = dt_local - datetime.timedelta(hours=9)
 
@@ -117,6 +110,7 @@ def calculate_horoscope(birth_date, birth_time_str, birth_place):
     lat, lon = get_coordinates(birth_place)
     pos = GeoPos(lat, lon)
 
+    # プラシダスハウス方式でチャートを生成
     chart = Chart(date_obj, pos, hsys=const.HOUSES_PLACIDUS)
 
     sun = chart.getObject(const.SUN)
@@ -226,18 +220,16 @@ if submitted:
           birth_date, birth_time_input, birth_place_input
       )
 
-      houses_str = (
-          '\n'.join(
-              [
-                  f'・{k}: {v}'
-                  for k, v in astro_data.get('ハウス情報', {}).items()
-              ]
-          )
-          if isinstance(astro_data.get('ハウス情報'), dict)
-          else ''
-      )
+      if 'エラー' in astro_data:
+        st.error(
+            f"ホロスコープの計算中にエラーが発生しました: {astro_data['エラー']}"
+        )
+      else:
+        houses_str = '\n'.join(
+            [f'・{k}: {v}' for k, v in astro_data.get('ハウス情報', {}).items()]
+        )
 
-      prompt = f"""
+        prompt = f"""
 あなたはプロの西洋占星術師およびキャリアカウンセラーです。
 以下の「事前にプログラムで正確に計算されたホロスコープデータ（天体、ハウス、ドラゴンヘッド、リリス）」および「相談者の入力データ」を厳密に使用し、推測による変更を一切加えずに、圧倒的に深くボリュームのある自己分析・キャリア設計レポートを作成してください。
 
@@ -290,15 +282,15 @@ if submitted:
 第9章：あなたへの総合メッセージ＆明日からのアクション3選
 """
 
-      try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
+        try:
+          client = genai.Client(api_key=api_key)
+          response = client.models.generate_content(
+              model='gemini-2.5-flash',
+              contents=prompt,
+          )
 
-        st.success('分析が完了しました！')
-        st.markdown(response.text)
+          st.success('正確なホロスコープ解析に基づく分析が完了しました！')
+          st.markdown(response.text)
 
-      except Exception as e:
-        st.error(f'エラーが発生しました: {str(e)}')
+        except Exception as e:
+          st.error(f'API連携時にエラーが発生しました: {str(e)}')
